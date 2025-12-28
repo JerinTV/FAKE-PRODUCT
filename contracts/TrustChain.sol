@@ -17,28 +17,23 @@ contract TrustChain {
         string warrantyPeriod;
         string batchNumber;
         string color;
-        string specs; // JSON string (public product specs - safe to show)
+        string specs;        // public info
         uint256 price;
         string image;
         bool shipped;
         bool verifiedByRetailer;
         bool sold;
+        bool verifiedBySystem;   // ✅ NEW (backend verified)
     }
 
-    // productId -> Product
     mapping(string => Product) private products;
-
-    // boxId -> array of productIds
     mapping(string => string[]) private productsByBox;
-
-    // productId -> secret (admin-only). Stored as string (e.g. hashed secret)
-    mapping(string => string) private productSecrets;
 
     event ProductRegistered(string indexed productId, string indexed boxId);
     event ProductShipped(string indexed productId);
     event ProductVerified(string indexed productId);
     event ProductSold(string indexed productId);
-    event ProductSecretSet(string indexed productId);
+    event ProductSystemVerified(string indexed productId);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner");
@@ -67,7 +62,6 @@ contract TrustChain {
         uint256 _price,
         string memory _image
     ) public {
-        // ensure product does not already exist
         require(bytes(products[_productId].productId).length == 0, "Already exists");
 
         products[_productId] = Product(
@@ -88,11 +82,11 @@ contract TrustChain {
             _image,
             false,
             false,
+            false,
             false
         );
 
         productsByBox[_boxId].push(_productId);
-
         emit ProductRegistered(_productId, _boxId);
     }
 
@@ -103,11 +97,18 @@ contract TrustChain {
         emit ProductShipped(_productId);
     }
 
-    // ---------------- VERIFY ----------------
+    // ---------------- VERIFY (Retailer) ----------------
     function verifyRetailer(string memory _productId) public {
         require(bytes(products[_productId].productId).length > 0, "Not registered");
         products[_productId].verifiedByRetailer = true;
         emit ProductVerified(_productId);
+    }
+
+    // ---------------- SYSTEM VERIFY (Backend) ----------------
+    function verifyBySystem(string memory _productId) public onlyOwner {
+        require(bytes(products[_productId].productId).length > 0, "Not registered");
+        products[_productId].verifiedBySystem = true;
+        emit ProductSystemVerified(_productId);
     }
 
     // ---------------- SALE ----------------
@@ -115,20 +116,6 @@ contract TrustChain {
         require(bytes(products[_productId].productId).length > 0, "Not registered");
         products[_productId].sold = true;
         emit ProductSold(_productId);
-    }
-
-    // ---------------- ADMIN: secret setter/getter ----------------
-    // set admin-only secret/seed/hash for product (onlyOwner)
-    function setProductSecret(string memory _productId, string memory _secret) public onlyOwner {
-        require(bytes(products[_productId].productId).length > 0, "Not registered");
-        productSecrets[_productId] = _secret;
-        emit ProductSecretSet(_productId);
-    }
-
-    // admin-only getter for secret
-    function getProductSecret(string memory _productId) public view onlyOwner returns (string memory) {
-        require(bytes(products[_productId].productId).length > 0, "Not registered");
-        return productSecrets[_productId];
     }
 
     // ---------------- FETCH ----------------

@@ -10,7 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^17.2.3",
     "ethers": "^6.16.0",
+    "express": "^5.2.1",
+    "glob": "^7.2.0",
     "lottie-react": "^2.4.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -29,7 +35,21 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "hardhat": "^2.27.2",
+    "solc": "^0.8.20",
     "typescript": "~5.8.0",
     "vite": "^7.2.4"
-  }
+  },
+  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
+  "main": "eslint.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JerinTV/FAKE-PRODUCT.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JerinTV/FAKE-PRODUCT/issues"
+  },
+  "homepage": "https://github.com/JerinTV/FAKE-PRODUCT#readme"
 }

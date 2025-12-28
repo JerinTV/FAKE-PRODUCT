@@ -1,57 +1,89 @@
-// src/components/UserDashboard.js
+// src/components/UserDashboard.jsx
 
-import React, { useState } from "react";
-import { getProduct } from "../../trustChain";
+import { useState } from "react";
+import { scanNfcTag } from "../../nfc/nfcScanner.js";
+import { requestChallenge,verifyResponse } from "../../services/api.js";
 import "../../index2.css";
 
 const UserDashboard = () => {
-  const [searchProductId, setSearchProductId] = useState("");
   const [status, setStatus] = useState("");
-  const [fetchedProduct, setFetchedProduct] = useState(null);
+  const [product, setProduct] = useState(null);
+  const [scanning, setScanning] = useState(false);
+  const [productId, setProductId] = useState(""); // Add productId state
+  const searchProductId = productId.trim();
+  
+// ---------- Scan NFC & Verify ----------
+const handleScanAndVerify = async () => {
+  if (!searchProductId) {
+    setStatus("❗ Please enter a Product ID.");
+    return;
+  }
 
-  // ---------- Fetch Single Product ----------
-  const handleFetchProduct = async () => {
-    try {
-      const p = await getProduct(searchProductId);
+  try {
+    setScanning(true);
+    setStatus("🔄 Requesting challenge...");
 
-      if (!p || !p.productId) {
-        setFetchedProduct(null);
-        setStatus("❌ Product not found");
-        return;
-      }
+    // 1️⃣ Request challenge
+    const { challenge } = await requestChallenge(searchProductId);
 
-      setFetchedProduct(p);
-      setStatus("");
-    } catch (e) {
-      setFetchedProduct(null);
-      setStatus("Fetch failed: " + e.message);
+    console.log("FRONTEND DEBUG:");
+    console.log("Product ID:", searchProductId);
+    console.log("Challenge:", challenge);
+
+    // 2️⃣ NFC signs challenge
+    setStatus("📡 Signing challenge via NFC...");
+    const response = await scanNfcTag(searchProductId, challenge);
+
+    console.log("Response:", response);
+
+    // 3️⃣ Verify with backend
+    setStatus("🔐 Verifying product...");
+    const result = await verifyResponse(searchProductId, response);
+
+    if (result.status === "GENUINE") {
+      setStatus("✅ Genuine Product");
+      setProduct(result.product);
+    } else {
+      setStatus("❌ Fake Product");
+      setProduct(null);
     }
-  };
+
+  } catch (err) {
+    console.error("Verification error:", err);
+    setStatus("❌ Verification failed");
+    setProduct(null);
+  } finally {
+    setScanning(false);
+  }
+};
+
 
   return (
     <div className="premium-dashboard" style={{ width: "100vw", padding: "20px" }}>
       <h2>Product Verification Portal</h2>
 
-      {/* ================= FETCH PRODUCT ================= */}
+      {/* ================= SCAN NFC ================= */}
       <div className="product-form">
-        <div className="form-row" style={{ marginBottom: "15px" }}>
-          <input
-            className="login-input"
-            placeholder="Enter Product ID"
-            style={{ width: "400px" }}
-            value={searchProductId}
-            onChange={e => setSearchProductId(e.target.value)}
-          />
-
-          <button className="btn-outline" onClick={handleFetchProduct}>
-            Fetch Product
-          </button>
-        </div>
+        <input
+          type="text"
+          placeholder="Enter Product ID"
+          value={productId}
+          onChange={e => setProductId(e.target.value)}
+          style={{ marginBottom: "10px", padding: "8px", width: "250px" }}
+        />
+        <button
+          className="btn-outline"
+          onClick={handleScanAndVerify}
+          disabled={scanning}
+          style={{ marginBottom: "15px", marginLeft: "10px" }}
+        >
+          {scanning ? "Scanning NFC..." : "Scan NFC"}
+        </button>
 
         {status && <div className="login-error">{status}</div>}
 
-        {/* ================= FETCHED PRODUCT CARD ================= */}
-        {fetchedProduct && (
+        {/* ================= PRODUCT CARD ================= */}
+        {product && (
           <div
             className="fetched-product-card premium"
             style={{
@@ -63,11 +95,11 @@ const UserDashboard = () => {
               alignItems: "flex-start"
             }}
           >
-            {/* ---------- LARGE PRODUCT IMAGE ---------- */}
+            {/* ---------- IMAGE ---------- */}
             <div className="fetched-image">
               <img
-                src={fetchedProduct.image}
-                alt={fetchedProduct.name}
+                src={product.image}
+                alt={product.name}
                 className="product-preview"
                 style={{
                   width: "350px",
@@ -81,7 +113,7 @@ const UserDashboard = () => {
 
             {/* ---------- DETAILS ---------- */}
             <div className="fetched-details" style={{ flex: 1 }}>
-              <h3>{fetchedProduct.name}</h3>
+              <h3>{product.name}</h3>
 
               <div
                 className="details-grid"
@@ -92,21 +124,11 @@ const UserDashboard = () => {
                   marginTop: "10px"
                 }}
               >
-                <div><strong>Product ID:</strong> {fetchedProduct.productId}</div>
-                <div><strong>Box ID:</strong> {fetchedProduct.boxId}</div>
-                <div><strong>Category:</strong> {fetchedProduct.category}</div>
-                <div><strong>Manufacturer:</strong> {fetchedProduct.manufacturer}</div>
-                <div><strong>Manufacture Date:</strong> {fetchedProduct.manufacturerDate}</div>
-                <div><strong>Manufacture Place:</strong> {fetchedProduct.manufacturePlace}</div>
-                <div><strong>Model Number:</strong> {fetchedProduct.modelNumber}</div>
-                <div><strong>Serial Number:</strong> {fetchedProduct.serialNumber}</div>
-                <div><strong>Batch Number:</strong> {fetchedProduct.batchNumber}</div>
-                <div><strong>Color:</strong> {fetchedProduct.color}</div>
-                <div><strong>Warranty:</strong> {fetchedProduct.warrantyPeriod}</div>
-                <div><strong>Price:</strong> ₹{fetchedProduct.price}</div>
+                <div><strong>Product ID:</strong> {product.productId}</div>
+                <div><strong>Manufacturer:</strong> {product.manufacturer}</div>
               </div>
 
-              {/* ---------- STATUS ICONS ---------- */}
+              {/* ---------- STATUS ---------- */}
               <div
                 className="status-icons"
                 style={{
@@ -118,29 +140,15 @@ const UserDashboard = () => {
               >
                 <div>
                   <strong>Shipped:</strong>{" "}
-                  {fetchedProduct.shipped ? (
-                    <span style={{ color: "green" }}>✔️</span>
-                  ) : (
-                    <span style={{ color: "red" }}>❌</span>
-                  )}
+                  {product.shipped ? "✔️" : "❌"}
                 </div>
-
                 <div>
                   <strong>Verified:</strong>{" "}
-                  {fetchedProduct.verifiedByRetailer ? (
-                    <span style={{ color: "green" }}>✔️</span>
-                  ) : (
-                    <span style={{ color: "red" }}>❌</span>
-                  )}
+                  {product.verifiedByRetailer ? "✔️" : "❌"}
                 </div>
-
                 <div>
                   <strong>Sold:</strong>{" "}
-                  {fetchedProduct.sold ? (
-                    <span style={{ color: "green" }}>✔️</span>
-                  ) : (
-                    <span style={{ color: "red" }}>❌</span>
-                  )}
+                  {product.sold ? "✔️" : "❌"}
                 </div>
               </div>
             </div>
