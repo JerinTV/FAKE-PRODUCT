@@ -1,6 +1,6 @@
 // src/components/AdminDashboard.js
-import React, { useState, useEffect } from "react";
-import { getProduct, getProductIdsByBox, shipProduct, verifyRetailer, saleComplete } from "../../trustChain";
+import React, { useState,useEffect } from "react";
+import { getProduct, getProductIdsByBox, shipBox, verifyRetailer, saleComplete, } from "../../trustChain";
 import "../../index2.css";
 
 const AdminDashboard = () => {
@@ -41,7 +41,7 @@ const AdminDashboard = () => {
 
   const handleShip = async (productId) => {
     try {
-      await shipProduct(productId);
+      await shipBox(productId);
       setStatus(`Product ${productId} marked as shipped.`);
       fetchBoxProducts();
     } catch (e) {
