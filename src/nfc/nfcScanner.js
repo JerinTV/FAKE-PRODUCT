@@ -1,42 +1,29 @@
 // frontend/src/nfc/nfcScanner.js
-import CryptoJS from "crypto-js";
 
 /*
-  scanNfcTag(productId, challenge)
-  → returns cryptographic response
+  FIX B:
+  Frontend calls backend NFC emulator
 */
+
 export async function scanNfcTag(productId, challenge) {
+  console.warn("📡 NFC emulation via backend");
 
-  /* ================= REAL NFC (future) ================= */
-  if ("NDEFReader" in window) {
-    console.warn("Web NFC detected — real NFC support pending");
+  const res = await fetch("http://localhost:5000/nfc/sign", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      productId,
+      challenge
+    })
+  });
 
-    /*
-      Real secure NFC chips (DESFire, NTAG424)
-      would compute HMAC internally.
-      Web NFC cannot do secure auth yet.
-    */
-
-    throw new Error("Secure NFC auth not supported via Web NFC");
+  if (!res.ok) {
+    throw new Error("Backend NFC signing failed");
   }
 
-  /* ================= DEMO MODE ================= */
-  console.warn("Web NFC not supported — using demo mode");
+  const data = await res.json();
 
-  // MUST match backend chip.js secret
-  const DEMO_SECRET_MAP = {
-    P1001: "SECURE_SECRET_1001",
-    P1002: "SECURE_SECRET_1002"
-  };
-
-  const secret = DEMO_SECRET_MAP[productId];
-
-  if (!secret) {
-    throw new Error("Unknown demo NFC tag");
-  }
-
-  // response = hash(secret + challenge)
-  const response = CryptoJS.SHA256(secret + challenge).toString();
-
-  return response;
+  return data.response; // ✅ THIS is the signed response
 }

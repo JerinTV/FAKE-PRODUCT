@@ -1,117 +1,157 @@
 import { ethers } from "ethers";
 import TrustChainAbi from "./TrustChainAbi.json";
+import CryptoJS from "crypto-js";
 
-// <-- replace this with your deployed contract address if different -->
-const CONTRACT_ADDRESS = "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318";
+/* ================= CONFIG ================= */
 
-// ---------- PROVIDER ----------
+const CONTRACT_ADDRESS = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
+
+/* ================= PROVIDER ================= */
+
 const getProvider = () => {
   if (!window.ethereum) throw new Error("MetaMask not found");
   return new ethers.BrowserProvider(window.ethereum);
 };
 
-// ---------- CONTRACT ----------
+/* ================= CONTRACT ================= */
+
 const getContract = async () => {
   if (!window.ethereum) throw new Error("MetaMask not found");
   await window.ethereum.request({ method: "eth_requestAccounts" });
+
   const provider = getProvider();
   const signer = await provider.getSigner();
+
   return new ethers.Contract(CONTRACT_ADDRESS, TrustChainAbi, signer);
 };
 
-// ---------- WALLET ----------
+/* ================= WALLET ================= */
+
 export const connectBlockchain = async () => {
   if (!window.ethereum) throw new Error("MetaMask not found");
   await window.ethereum.request({ method: "eth_requestAccounts" });
   console.log("✅ Wallet connected");
 };
 
-// ---------- REGISTER ----------
-export const registerProduct = async (product) => {
+/* ================= BACKEND SECRET STORAGE ================= */
+
+const storeSecretInBackend = async (productId, secret) => {
+  await fetch("http://localhost:5000/store-secret", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ productId, secret })
+  });
+};
+
+/* ================= SECRET HELPERS ================= */
+
+const generateBatchSecret = () => {
+  return CryptoJS.lib.WordArray.random(32).toString();
+};
+
+const deriveProductSecret = (batchSecret, productId) => {
+  return CryptoJS.SHA256(batchSecret + productId).toString();
+};
+
+/* ================= ⭐ BATCH REGISTER (PRODUCTION) ================= */
+
+export const registerBatch = async (batch) => {
+  console.log("🏭 Registering batch:", batch.batchId);
+
   const contract = await getContract();
 
-  // Ensure specs is always a string
-  const specsString = JSON.stringify(product.specs || {});
+  // 1️⃣ Generate batch secret (OFF-CHAIN)
+  const batchSecret = generateBatchSecret();
+  console.log("🔐 Batch secret generated");
 
-  const tx = await contract.registerProduct(
-    product.productId,
-    product.boxId,
-    product.name,
-    product.category,
-    product.manufacturer,
-    product.manufacturerDate,
-    product.manufacturePlace,
-    product.modelNumber,
-    product.serialNumber,
-    product.warrantyPeriod,
-    product.batchNumber,
-    product.color,
-    specsString,
-    BigInt(product.price),
-    product.image
+  const startNum = parseInt(batch.startProductId.replace(/\D/g, ""), 10);
+
+  const items = [];
+
+  // 2️⃣ Prepare batch payload
+  for (let i = 0; i < batch.batchSize; i++) {
+    const productId = `P${startNum + i}`;
+    const serialNumber = `${batch.batchId}-SN-${i + 1}`;
+
+    const productSecret = deriveProductSecret(batchSecret, productId);
+
+    // store secret in backend DB (JSON)
+    await storeSecretInBackend(productId, productSecret);
+
+    items.push({
+      productId,
+      boxId: batch.boxId,
+      name: batch.name,
+      category: batch.category,
+      manufacturer: batch.manufacturer,
+      manufacturerDate: batch.manufacturerDate,
+      manufacturePlace: batch.manufacturePlace,
+      modelNumber: batch.modelNumber,
+      serialNumber,
+      warrantyPeriod: batch.warrantyPeriod,
+      batchNumber: batch.batchId,
+      color: batch.color,
+      specs: JSON.stringify({ batch: batch.batchId }),
+      price: BigInt(batch.price),
+      image: batch.image
+    });
+
+    console.log("🔐 NFC secret stored for:", productId);
+  }
+
+  // 3️⃣ SINGLE blockchain transaction ✅
+  const tx = await contract.registerBatchProducts(
+    batch.batchId,
+    batch.boxId,
+    items
   );
 
   await tx.wait();
-  console.log("✅ Product Registered");
+
+  console.log("✅ Batch registered on blockchain (ONE TX)");
 };
 
-// ---------- SHIP ----------
-export const shipProduct = async (productId) => {
+/* ================= SHIP ================= */
+
+export const shipBox = async (boxId) => {
   const contract = await getContract();
-  const tx = await contract.shipProduct(productId);
+  const tx = await contract.shipBox(boxId);
   await tx.wait();
-  console.log("✅ Shipped:", productId);
+  console.log("📦 Box shipped:", boxId);
 };
 
-// ---------- GET PRODUCTS BY BOX ----------
+
+/* ================= BOX QUERY ================= */
+
 export const getProductIdsByBox = async (boxId) => {
   const contract = await getContract();
   const ids = await contract.getProductsByBox(boxId);
-  // ensure returned array is normal JS array of strings
-  return ids.map(x => x.toString());
+  return ids.map(id => id.toString());
 };
 
-// ---------- VERIFY ----------
+/* ================= RETAILER VERIFY ================= */
+
 export const verifyRetailer = async (productId) => {
   const contract = await getContract();
   const tx = await contract.verifyRetailer(productId);
   await tx.wait();
-  console.log("✅ Verified:", productId);
+  console.log("✅ Retailer verified:", productId);
 };
 
-// ---------- SELL ----------
+/* ================= SALE ================= */
+
 export const saleComplete = async (productId) => {
   const contract = await getContract();
   const tx = await contract.saleComplete(productId);
   await tx.wait();
-  console.log("✅ Sold:", productId);
+  console.log("💰 Sold:", productId);
 };
 
-// ---------- ADMIN: set/get secret ----------
-export const setProductSecret = async (productId, secret) => {
-  const contract = await getContract();
-  const tx = await contract.setProductSecret(productId, secret);
-  await tx.wait();
-  console.log("✅ Secret set for:", productId);
-};
+/* ================= FETCH PRODUCT ================= */
 
-export const getProductSecret = async (productId) => {
-  const contract = await getContract();
-  const secret = await contract.getProductSecret(productId);
-  return secret.toString();
-};
-
-// ---------- FETCH PRODUCT ----------
 export const getProduct = async (productId) => {
   const contract = await getContract();
   const p = await contract.getProduct(productId);
-
-  let parsedSpecs = {};
-  try {
-    parsedSpecs = p.specs ? JSON.parse(p.specs) : {};
-  } catch {
-    parsedSpecs = {};
-  }
 
   return {
     productId: p.productId || "",
@@ -126,7 +166,7 @@ export const getProduct = async (productId) => {
     warrantyPeriod: p.warrantyPeriod || "",
     batchNumber: p.batchNumber || "",
     color: p.color || "",
-    specs: parsedSpecs,
+    specs: p.specs ? JSON.parse(p.specs) : {},
     price: p.price ? p.price.toString() : "0",
     image: p.image || "",
     shipped: Boolean(p.shipped),

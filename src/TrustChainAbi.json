@@ -22,29 +22,51 @@
     "stateMutability": "nonpayable",
     "type": "function"
   },
+
   {
-    "inputs": [{ "internalType": "string", "name": "_productId", "type": "string" }],
+    "inputs": [
+      { "internalType": "string", "name": "_productId", "type": "string" }
+    ],
     "name": "shipProduct",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
+
   {
-    "inputs": [{ "internalType": "string", "name": "_productId", "type": "string" }],
+    "inputs": [
+      { "internalType": "string", "name": "_productId", "type": "string" }
+    ],
     "name": "verifyRetailer",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
+
   {
-    "inputs": [{ "internalType": "string", "name": "_productId", "type": "string" }],
+    "inputs": [
+      { "internalType": "string", "name": "_productId", "type": "string" }
+    ],
+    "name": "verifyBySystem",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+
+  {
+    "inputs": [
+      { "internalType": "string", "name": "_productId", "type": "string" }
+    ],
     "name": "saleComplete",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
+
   {
-    "inputs": [{ "internalType": "string", "name": "_productId", "type": "string" }],
+    "inputs": [
+      { "internalType": "string", "name": "_productId", "type": "string" }
+    ],
     "name": "getProduct",
     "outputs": [
       {
@@ -66,7 +88,8 @@
           { "internalType": "string", "name": "image", "type": "string" },
           { "internalType": "bool", "name": "shipped", "type": "bool" },
           { "internalType": "bool", "name": "verifiedByRetailer", "type": "bool" },
-          { "internalType": "bool", "name": "sold", "type": "bool" }
+          { "internalType": "bool", "name": "sold", "type": "bool" },
+          { "internalType": "bool", "name": "verifiedBySystem", "type": "bool" }
         ],
         "internalType": "struct TrustChain.Product",
         "name": "",
@@ -76,35 +99,429 @@
     "stateMutability": "view",
     "type": "function"
   },
-  {
-    "inputs": [{ "internalType": "string", "name": "_boxId", "type": "string" }],
-    "name": "getProductsByBox",
-    "outputs": [{ "internalType": "string[]", "name": "", "type": "string[]" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
+
   {
     "inputs": [
-      { "internalType": "string", "name": "_productId", "type": "string" },
-      { "internalType": "string", "name": "_secret", "type": "string" }
+      { "internalType": "string", "name": "_boxId", "type": "string" }
     ],
-    "name": "setProductSecret",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [{ "internalType": "string", "name": "_productId", "type": "string" }],
-    "name": "getProductSecret",
-    "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+    "name": "getProductsByBox",
+    "outputs": [
+      { "internalType": "string[]", "name": "", "type": "string[]" }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
+
   {
     "inputs": [],
     "name": "owner",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "outputs": [
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
     "stateMutability": "view",
     "type": "function"
-  }
+  },
+
+
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "string",
+          "name": "batchNumber",
+          "type": "string"
+        },
+        {
+          "indexed": true,
+          "internalType": "string",
+          "name": "boxId",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "productCount",
+          "type": "uint256"
+        }
+      ],
+      "name": "BatchRegistered",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "string",
+          "name": "productId",
+          "type": "string"
+        },
+        {
+          "indexed": true,
+          "internalType": "string",
+          "name": "boxId",
+          "type": "string"
+        }
+      ],
+      "name": "ProductRegistered",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "string",
+          "name": "productId",
+          "type": "string"
+        }
+      ],
+      "name": "ProductShipped",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "string",
+          "name": "productId",
+          "type": "string"
+        }
+      ],
+      "name": "ProductSold",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "string",
+          "name": "productId",
+          "type": "string"
+        }
+      ],
+      "name": "ProductSystemVerified",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "string",
+          "name": "productId",
+          "type": "string"
+        }
+      ],
+      "name": "ProductVerified",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "productId",
+          "type": "string"
+        }
+      ],
+      "name": "getProduct",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "string",
+              "name": "productId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "boxId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "category",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "manufacturer",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "manufacturerDate",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "manufacturePlace",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "modelNumber",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "serialNumber",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "warrantyPeriod",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "batchNumber",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "color",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "specs",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "price",
+              "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "image",
+              "type": "string"
+            },
+            {
+              "internalType": "bool",
+              "name": "shipped",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "verifiedByRetailer",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "sold",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "verifiedBySystem",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct TrustChain.Product",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "boxId",
+          "type": "string"
+        }
+      ],
+      "name": "getProductsByBox",
+      "outputs": [
+        {
+          "internalType": "string[]",
+          "name": "",
+          "type": "string[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "batchNumber",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "boxId",
+          "type": "string"
+        },
+        {
+          "components": [
+            {
+              "internalType": "string",
+              "name": "productId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "boxId",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "category",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "manufacturer",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "manufacturerDate",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "manufacturePlace",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "modelNumber",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "serialNumber",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "warrantyPeriod",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "batchNumber",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "color",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "specs",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "price",
+              "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "image",
+              "type": "string"
+            }
+          ],
+          "internalType": "struct TrustChain.ProductInput[]",
+          "name": "items",
+          "type": "tuple[]"
+        }
+      ],
+      "name": "registerBatchProducts",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "productId",
+          "type": "string"
+        }
+      ],
+      "name": "saleComplete",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_boxId",
+          "type": "string"
+        }
+      ],
+      "name": "shipBox",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "productId",
+          "type": "string"
+        }
+      ],
+      "name": "verifyBySystem",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "productId",
+          "type": "string"
+        }
+      ],
+      "name": "verifyRetailer",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
 ]
