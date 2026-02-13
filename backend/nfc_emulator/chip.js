@@ -1,39 +1,19 @@
 // backend/nfc_emulator/chip.js
+
 import crypto from "crypto";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
+import { prisma } from "../prismaClient.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+export async function signChallenge(productId, challenge) {
 
-/*
-  chip.js        -> backend/nfc_emulator/chip.js
-  secretStore.js -> backend/secretStore.json
-*/
-const SECRET_FILE = path.join(__dirname, "../secretStore.json");
+  const record = await prisma.productSecret.findUnique({
+    where: { productId }
+  });
 
-function loadSecrets() {
-  if (!fs.existsSync(SECRET_FILE)) {
-    console.error("❌ secretStore.json NOT FOUND at:", SECRET_FILE);
-    return {};
-  }
-
-  return JSON.parse(fs.readFileSync(SECRET_FILE, "utf-8"));
-}
-
-export function signChallenge(productId, challenge) {
-  const secrets = loadSecrets();
-
-  console.log("🔎 NFC DEBUG:");
-  console.log("Product ID:", productId);
-  console.log("Available secrets:", Object.keys(secrets));
-
-  const secret = secrets[productId];
-
-  if (!secret) {
+  if (!record) {
     throw new Error("Unknown NFC chip / secret not found");
   }
+
+  const secret = record.secret;
 
   return crypto
     .createHash("sha256")

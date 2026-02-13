@@ -8,7 +8,12 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import { signChallenge } from "./nfc_emulator/chip.js";
-import { storeSecretInBackend } from "./storeSecret.js";
+
+import { prisma } from "./prismaClient.js";
+import { authenticate } from "./middleware/auth.middleware.js";
+import authRoutes from "./routes/auth.routes.js";
+
+
 
 dotenv.config();
 
@@ -28,6 +33,8 @@ const app = express();
 app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
 
+
+app.use("/api/auth", authRoutes);
 /* ================= BLOCKCHAIN SETUP ================= */
 
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
@@ -52,22 +59,7 @@ function generateChallenge() {
    0️⃣ STORE NFC SECRET (manufacturing time)
    ===================================================== */
 
-app.post("/store-secret", (req, res) => {
-  try {
-    const { productId, secret } = req.body;
 
-    if (!productId || !secret) {
-      return res.status(400).json({ error: "productId & secret required" });
-    }
-
-    storeSecretInBackend(productId, secret);
-    res.json({ status: "stored" });
-
-  } catch (err) {
-    console.error("Store-secret error:", err);
-    res.status(500).json({ error: "Failed to store secret" });
-  }
-});
 
 /* =====================================================
    1️⃣ CHALLENGE ENDPOINT
@@ -112,7 +104,7 @@ app.post("/challenge", async (req, res) => {
   }
 });
 
-app.post("/nfc/sign", (req, res) => {
+app.post("/nfc/sign", async (req, res) => {
   try {
     const { productId, challenge } = req.body;
 
@@ -125,7 +117,7 @@ app.post("/nfc/sign", (req, res) => {
       });
     }
 
-    const response = signChallenge(productId, challenge);
+    const response = await signChallenge(productId, challenge);
 
     res.json({ response });
 
@@ -134,6 +126,65 @@ app.post("/nfc/sign", (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
+app.post("/prepare-batch", authenticate, async (req, res) => {
+  try {
+    const batch = req.body;
+
+    const startNum = parseInt(
+      batch.startProductId.replace(/\D/g, ""),
+      10
+    );
+
+    const batchSecret = crypto.randomBytes(32).toString("hex");
+
+    const items = [];
+
+    for (let i = 0; i < batch.batchSize; i++) {
+      const productId = `P${startNum + i}`;
+      const serialNumber = `${batch.batchId}-SN-${i + 1}`;
+
+      const productSecret = crypto
+        .createHash("sha256")
+        .update(batchSecret + productId)
+        .digest("hex");
+
+      // ✅ Store in DB
+      await prisma.productSecret.upsert({
+        where: { productId },
+        update: { secret: productSecret },
+        create: { productId, secret: productSecret }
+      });
+
+      items.push({
+        productId,
+        boxId: batch.boxId,
+        name: batch.name,
+        category: batch.category,
+        manufacturer: batch.manufacturer,
+        manufacturerDate: batch.manufacturerDate,
+        manufacturePlace: batch.manufacturePlace,
+        modelNumber: batch.modelNumber,
+        serialNumber,
+        warrantyPeriod: batch.warrantyPeriod,
+        batchNumber: batch.batchId,
+        color: batch.color,
+        specs: JSON.stringify({ batch: batch.batchId }),
+        price: batch.price,
+        image: batch.image
+      });
+    }
+
+    console.log("✅ Batch prepared with secrets stored in DB");
+
+    res.json({ items });
+
+  } catch (err) {
+    console.error("❌ Batch preparation failed:", err);
+    res.status(500).json({ error: "Batch preparation failed" });
+  }
+});
+
 
 
 
@@ -160,7 +211,7 @@ app.post("/verify", async (req, res) => {
 
     let expected;
     try {
-      expected = signChallenge(productId, challenge);
+      expected = await signChallenge(productId, challenge);
     } catch (nfcErr) {
       console.error("❌ NFC error:", nfcErr);
       return res.json({ status: "FAKE" });
