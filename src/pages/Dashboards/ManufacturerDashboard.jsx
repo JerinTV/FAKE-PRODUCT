@@ -1,6 +1,6 @@
 // src/components/ManufacturerDashboard.jsx
 
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   connectBlockchain,
   registerBatch,

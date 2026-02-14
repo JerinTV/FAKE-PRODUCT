@@ -1,5 +1,4 @@
 // src/App.jsx
-import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import RoleSelect from "./pages/RoleSelect";
@@ -8,6 +7,7 @@ import UserDashboard from "./pages/Dashboards/UserDashboard";
 import RetailerDashboard from "./pages/Dashboards/RetailerDashboard";
 import ManufacturerDashboard from "./pages/Dashboards/ManufacturerDashboard";
 import AdminDashboard from "./pages/Dashboards/AdminDashboard";
+
 
 export default function App() {
   return (

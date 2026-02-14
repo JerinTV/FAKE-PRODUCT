@@ -1,10 +1,10 @@
 import { ethers } from "ethers";
 import TrustChainAbi from "./TrustChainAbi.json";
-import CryptoJS from "crypto-js";
 
 /* ================= CONFIG ================= */
 
-const CONTRACT_ADDRESS = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
+// Replace the below with your contract address, or use import.meta.env for Vite, or process.env for CRA at build time
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS
 
 /* ================= PROVIDER ================= */
 
@@ -35,23 +35,11 @@ export const connectBlockchain = async () => {
 
 /* ================= BACKEND SECRET STORAGE ================= */
 
-const storeSecretInBackend = async (productId, secret) => {
-  await fetch("http://localhost:5000/store-secret", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ productId, secret })
-  });
-};
+
 
 /* ================= SECRET HELPERS ================= */
 
-const generateBatchSecret = () => {
-  return CryptoJS.lib.WordArray.random(32).toString();
-};
 
-const deriveProductSecret = (batchSecret, productId) => {
-  return CryptoJS.SHA256(batchSecret + productId).toString();
-};
 
 /* ================= ⭐ BATCH REGISTER (PRODUCTION) ================= */
 
@@ -60,46 +48,25 @@ export const registerBatch = async (batch) => {
 
   const contract = await getContract();
 
-  // 1️⃣ Generate batch secret (OFF-CHAIN)
-  const batchSecret = generateBatchSecret();
-  console.log("🔐 Batch secret generated");
+  // 1️⃣ Ask backend to prepare batch (generate secrets + store in DB)
+  const token = localStorage.getItem("token");
+  const res = await fetch("http://localhost:5000/prepare-batch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+     },
+    body: JSON.stringify(batch)
+  });
 
-  const startNum = parseInt(batch.startProductId.replace(/\D/g, ""), 10);
-
-  const items = [];
-
-  // 2️⃣ Prepare batch payload
-  for (let i = 0; i < batch.batchSize; i++) {
-    const productId = `P${startNum + i}`;
-    const serialNumber = `${batch.batchId}-SN-${i + 1}`;
-
-    const productSecret = deriveProductSecret(batchSecret, productId);
-
-    // store secret in backend DB (JSON)
-    await storeSecretInBackend(productId, productSecret);
-
-    items.push({
-      productId,
-      boxId: batch.boxId,
-      name: batch.name,
-      category: batch.category,
-      manufacturer: batch.manufacturer,
-      manufacturerDate: batch.manufacturerDate,
-      manufacturePlace: batch.manufacturePlace,
-      modelNumber: batch.modelNumber,
-      serialNumber,
-      warrantyPeriod: batch.warrantyPeriod,
-      batchNumber: batch.batchId,
-      color: batch.color,
-      specs: JSON.stringify({ batch: batch.batchId }),
-      price: BigInt(batch.price),
-      image: batch.image
-    });
-
-    console.log("🔐 NFC secret stored for:", productId);
+  if (!res.ok) {
+    throw new Error("Failed to prepare batch on backend");
   }
 
-  // 3️⃣ SINGLE blockchain transaction ✅
+  const { items } = await res.json();
+
+  console.log("🔐 Backend prepared secrets & returned items");
+
+  // 2️⃣ Single blockchain transaction
   const tx = await contract.registerBatchProducts(
     batch.batchId,
     batch.boxId,
@@ -110,6 +77,7 @@ export const registerBatch = async (batch) => {
 
   console.log("✅ Batch registered on blockchain (ONE TX)");
 };
+
 
 /* ================= SHIP ================= */
 
